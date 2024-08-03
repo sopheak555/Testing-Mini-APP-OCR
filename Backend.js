@@ -1,45 +1,40 @@
-const express = require('express');
-const multer = require('multer');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+async function analyzeReceipt() {
+    const input = document.getElementById('imageInput');
+    const file = input.files[0];
+    if (!file) {
+        alert('Please select an image first.');
+        return;
+    }
 
-const app = express();
-const upload = multer({ dest: 'uploads/' });
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        const base64Image = e.target.result.split(',')[1];
 
-// Initialize Gemini API
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        try {
+            const response = await fetch('https://api.github.com/repos/YOUR_USERNAME/telegram-receipt-scanner/dispatches', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer YOUR_GITHUB_PAT',
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    event_type: 'analyze_receipt',
+                    client_payload: {
+                        image: base64Image
+                    }
+                })
+            });
 
-app.post('/analyze', upload.single('image'), async (req, res) => {
-  try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro-vision' });
-    
-    // Read the uploaded image
-    const imageData = await fs.promises.readFile(req.file.path);
-    const imageParts = [
-      {
-        inlineData: {
-          data: imageData.toString('base64'),
-          mimeType: req.file.mimetype,
-        },
-      },
-    ];
-
-    const result = await model.generateContent([
-      'Extract and structure the following information from this receipt image: date, total amount, location, items purchased. Return the data in JSON format.',
-      ...imageParts,
-    ]);
-
-    const extractedData = JSON.parse(result.response.text());
-
-    // Here you would typically save extractedData to your database
-
-    res.json(extractedData);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'An error occurred during image analysis' });
-  }
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+            if (response.ok) {
+                document.getElementById('result').innerText = 'Analysis request sent. Check repository actions for results.';
+            } else {
+                throw new Error('Failed to send analysis request');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred during analysis request.');
+        }
+    };
+    reader.readAsDataURL(file);
+}
