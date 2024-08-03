@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt Scanner</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <input type="file" id="imageInput" accept="image/*">
+    <button onclick="analyzeReceipt()">Analyze Receipt</button>
+    <div id="result"></div>
+
+    <script>
+        async function analyzeReceipt() {
+            const input = document.getElementById('imageInput');
+            const file = input.files[0];
+            if (!file) {
+                alert('Please select an image first.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                document.getElementById('result').innerText = JSON.stringify(data, null, 2);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred during analysis.');
+            }
+        }
+    </script>
+</body>
+</html>
